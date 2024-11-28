@@ -1,0 +1,41 @@
+name: CI/CD Pipeline - Feature to Dev
+
+on:
+  push:
+    branches:
+      - dev
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 16
+
+      - name: Install Backend Dependencies
+        working-directory: backend
+        run: npm install
+
+      - name: Run Backend Unit Tests
+        working-directory: backend
+        run: npm test
+
+      - name: Install Frontend Dependencies
+        working-directory: frontend
+        run: npm install
+
+      - name: Run Frontend Unit Tests
+        working-directory: frontend
+        run: npm test
+
+      - name: Merge Dev to Main
+        uses: devops-actions/merge-branch@v3
+        with:
+          target_branch: main
+          branch: dev
+          github_token: ${{ secrets.GITHUB_TOKEN }}
