@@ -1,41 +1,51 @@
-name: CI/CD Pipeline - Feature to Dev
+name: CI Feature to Dev
 
 on:
-  push:
+  pull_request:
     branches:
       - dev
 
 jobs:
-  build-test:
+  build-and-test:
     runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v3
+    - name: Récupérer le code
+      uses: actions/checkout@v3
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: 16
+    - name: Configurer Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: 18
 
-      - name: Install Backend Dependencies
-        working-directory: backend
-        run: npm install
+    - name: Installer les dépendances frontend
+      working-directory: frontend
+      run: npm install
 
-      - name: Run Backend Unit Tests
-        working-directory: backend
-        run: npm test
+    - name: Installer les dépendances backend
+      working-directory: backend
+      run: npm install
 
-      - name: Install Frontend Dependencies
-        working-directory: frontend
-        run: npm install
+    - name: Lancer les tests unitaires frontend
+      working-directory: frontend
+      run: npm test
 
-      - name: Run Frontend Unit Tests
-        working-directory: frontend
-        run: npm test
+    - name: Lancer les tests unitaires backend
+      working-directory: backend
+      run: npm test
 
-      - name: Merge Dev to Main
-        uses: devops-actions/merge-branch@v3
-        with:
-          target_branch: main
-          branch: dev
-          github_token: ${{ secrets.GITHUB_TOKEN }}
+  auto-merge-dev-to-main:
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    if: success()
+
+    steps:
+    - name: Récupérer le code
+      uses: actions/checkout@v3
+
+    - name: Fusionner dev dans main
+      uses: devops-infra/github-actions-merge-branch@v2
+      with:
+        from-branch: dev
+        target-branch: main
+        github-token: ${{ secrets.GITHUB_TOKEN }}
