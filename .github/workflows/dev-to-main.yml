@@ -1,52 +1,78 @@
-name: CI/CD Pipeline - Dev to Main
+name: CI/CD Dev to Main
 
 on:
-  push:
+  pull_request:
     branches:
       - main
 
 jobs:
-  build-test-deploy:
+  build-and-test:
     runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v3
+    - name: Récupérer le code
+      uses: actions/checkout@v3
 
-      - name: Set up Docker Compose
-        run:
-          sudo apt-get update
-          sudo apt-get install -y docker-compose
+    - name: Configurer Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: 18
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: 16
+    - name: Installer les dépendances frontend
+      working-directory: frontend
+      run: npm install
 
-      - name: Install Backend Dependencies
-        working-directory: backend
-        run: npm install
+    - name: Installer les dépendances backend
+      working-directory: backend
+      run: npm install
 
-      - name: Run Backend Unit Tests
-        working-directory: backend
-        run: npm test
+    - name: Lancer les tests unitaires frontend
+      working-directory: frontend
+      run: npm test
 
-      - name: Install Frontend Dependencies
-        working-directory: frontend
-        run: npm install
+    - name: Lancer les tests unitaires backend
+      working-directory: backend
+      run: npm test
 
-      - name: Run Frontend Unit Tests
-        working-directory: frontend
-        run: npm test
+    - name: Installer Docker Compose
+      run: |
+        sudo curl -L "https://github.com/docker/compose/releases/download/v2.20.0/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+        sudo chmod +x /usr/local/bin/docker-compose
+        docker-compose version
 
-      - name: Run End-to-End Tests
-        working-directory: e2e-tests
-        run: npm install && npm test
+  run-e2e-tests:
+    needs: build-and-test
+    runs-on: ubuntu-latest
 
-      - name: Build Docker Images
-        run: docker-compose build
+    steps:
+    - name: Démarrer Docker Compose
+      run: docker-compose up --build -d
 
-      - name: Log in to Docker Hub
-        run: echo "${{ secrets.DOCKER_PASSWORD }}" | docker login --username "${{ secrets.DOCKER_USERNAME }}" --password-stdin
+    - name: Lancer les tests E2E
+      working-directory: e2e-tests
+      run: |
+        npm install
+        npm test
 
-      - name: Push Docker Images
-        run: docker-compose push
+    - name: Arrêter Docker Compose
+      run: docker-compose down
+
+  build-and-push-docker:
+    needs: run-e2e-tests
+    if: success()
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Récupérer le code
+      uses: actions/checkout@v3
+
+    - name: Connexion à Docker Hub
+      uses: docker/login-action@v2
+      with:
+        username: ${{ secrets.DOCKER_USERNAME }}
+        password: ${{ secrets.DOCKER_PASSWORD }}
+
+    - name: Construire et pousser les images Docker
+      run: |
+        docker-compose build
+        docker-compose push
