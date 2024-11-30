@@ -3,8 +3,7 @@ import Garden from './components/Garden';
 import TaskInput from './components/TaskInput';
 import axios from 'axios';
 import Plant from './components/Plant';
-// commit
-//deux commit
+// 
 
 function App() {
   const [tasks, setTasks] = useState([]);
