@@ -1,4 +1,4 @@
-name: CI - Feature to Dev
+name: Dev Merge Workflow
 
 on:
   push:
@@ -6,46 +6,47 @@ on:
       - dev
 
 jobs:
-  build:
+  build-and-test:
     runs-on: ubuntu-latest
-    
+
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v2
+    - name: Checkout code
+      uses: actions/checkout@v3
 
     - name: Set up Node.js
-      uses: actions/setup-node@v2
+      uses: actions/setup-node@v3
       with:
-        node-version: '14'
+        node-version: '16'
 
-    - name: Install dependencies for frontend
-      run: |
-        cd frontend
-        npm install
+    - name: Install frontend dependencies
+      working-directory: ./frontend
+      run: npm install
 
-    - name: Install dependencies for backend
-      run: |
-        cd backend
-        npm install
+    - name: Install backend dependencies
+      working-directory: ./backend
+      run: npm install
 
-    - name: Run unit tests for frontend
-      run: |
-        cd frontend
-        npm test
+    - name: Run frontend unit tests
+      working-directory: ./frontend
+      run: npm test
 
-    - name: Run unit tests for backend
-      run: |
-        cd backend
-        npm test
-    - name: config git
-      run: |
-          git config --global user.name "GitHub Actions"
-          git config --global user.email "actions@github.com"
+    - name: Run backend unit tests
+      working-directory: ./backend
+      run: npm test
 
-    - name: Merge dev into master
-      if: success()
-      run: |
-          git fetch origin master
-          git checkout master
-          git merge dev -X theirs --allow-unrelated-histories
-          git push origin master
+  merge-to-main:
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    if: success()
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Merge dev into main
+      uses: x-theis/merge-branch@v1.6
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        branch: dev
+        target_branch: main
+        merge_method: squash
