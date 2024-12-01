@@ -1,4 +1,4 @@
-name: CI/CD Pipeline - Feature to Dev
+name: Dev Merge Workflow
 
 on:
   push:
@@ -6,36 +6,47 @@ on:
       - dev
 
 jobs:
-  build-test:
+  build-and-test:
     runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v3
+    - name: Checkout code
+      uses: actions/checkout@v3
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: 16
+    - name: Set up Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '16'
 
-      - name: Install Backend Dependencies
-        working-directory: backend
-        run: npm install
+    - name: Install frontend dependencies
+      working-directory: ./frontend
+      run: npm install
 
-      - name: Run Backend Unit Tests
-        working-directory: backend
-        run: npm test
+    - name: Install backend dependencies
+      working-directory: ./backend
+      run: npm install
 
-      - name: Install Frontend Dependencies
-        working-directory: frontend
-        run: npm install
+    - name: Run frontend unit tests
+      working-directory: ./frontend
+      run: npm test
 
-      - name: Run Frontend Unit Tests
-        working-directory: frontend
-        run: npm test
+    - name: Run backend unit tests
+      working-directory: ./backend
+      run: npm test
 
-      - name: Merge Dev to Main
-        uses: devops-actions/merge-branch@v3
-        with:
-          target_branch: main
-          branch: dev
-          github_token: ${{ secrets.GITHUB_TOKEN }}
+  merge-to-main:
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    if: success()
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Merge dev into main
+      uses: x-theis/merge-branch@v1.6
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        branch: dev
+        target_branch: main
+        merge_method: squash
