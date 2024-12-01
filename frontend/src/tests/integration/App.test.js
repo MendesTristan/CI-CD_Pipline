@@ -17,6 +17,7 @@ test('adds a task and displays it in the garden', async () => {
         target: { value: 'New Task' },
     });
     fireEvent.click(getByText('Add'));
+    //dem
 
     await waitFor(() => expect(getByText('🌱 New Task')).toBeInTheDocument());
 });
